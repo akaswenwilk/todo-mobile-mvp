@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:todo_mobile_mvp/features/tasks/data/datasources/in_memory_task_store.dart';
 import 'package:todo_mobile_mvp/features/tasks/data/repositories/task_repository_local.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/entities/task.dart';
+import 'package:todo_mobile_mvp/features/tasks/domain/errors/task_validation_exception.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/repositories/task_repository.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/usecases/complete_task.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/usecases/create_task.dart';
@@ -62,18 +63,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
     });
   }
 
-  Future<bool> _onAddTask(String rawTitle) async {
-    try {
-      await _createTask(rawTitle);
-      await _loadTasks();
-      return true;
-    } catch (_) {
-      if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid task title.')),
-      );
-      return false;
-    }
+  Future<void> _onAddTask(String rawTitle) async {
+    await _createTask(rawTitle);
+    await _loadTasks();
   }
 
   void _startEditing(Task task) {
@@ -119,8 +111,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
       builder: (context) {
         return _AddTaskSheet(
           onSubmit: (title) async {
-            final didCreate = await _onAddTask(title);
-            if (didCreate && context.mounted) {
+            await _onAddTask(title);
+            if (context.mounted) {
               Navigator.of(context).pop();
             }
           },
@@ -223,6 +215,7 @@ class _AddTaskSheet extends StatefulWidget {
 
 class _AddTaskSheetState extends State<_AddTaskSheet> {
   final _controller = TextEditingController();
+  String? _errorText;
 
   @override
   void dispose() {
@@ -231,7 +224,38 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   }
 
   Future<void> _submit() async {
-    await widget.onSubmit(_controller.text);
+    setState(() {
+      _errorText = null;
+    });
+
+    final raw = _controller.text;
+    final normalized = raw.trim();
+
+    if (normalized.isEmpty) {
+      setState(() {
+        _errorText = 'Please enter a valid task title.';
+      });
+      return;
+    }
+
+    if (normalized.length > 280) {
+      setState(() {
+        _errorText = 'Task title must be 280 characters or fewer.';
+      });
+      return;
+    }
+
+    try {
+      await widget.onSubmit(raw);
+    } on TaskValidationException catch (e) {
+      setState(() {
+        _errorText = e.message;
+      });
+    } catch (_) {
+      setState(() {
+        _errorText = 'Could not save task. Please try again.';
+      });
+    }
   }
 
   @override
@@ -253,8 +277,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
             maxLines: null,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'What needs to get done?',
+              errorText: _errorText,
             ),
           ),
           const SizedBox(height: 12),

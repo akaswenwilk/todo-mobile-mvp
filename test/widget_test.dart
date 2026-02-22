@@ -63,6 +63,23 @@ void main() {
     expect(find.text('Ship PR-04'), findsOneWidget);
   });
 
+  testWidgets(
+    'add task shows immediate inline validation error on invalid input',
+    (tester) async {
+      await pumpApp(tester);
+
+      await tester.tap(find.byKey(TaskListScreen.fabKey));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(TaskListScreen.addTaskInputKey), '   ');
+      await tester.tap(find.byKey(TaskListScreen.addTaskSaveKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter a valid task title.'), findsOneWidget);
+      expect(find.byKey(TaskListScreen.addTaskInputKey), findsOneWidget);
+    },
+  );
+
   testWidgets('M11 + M12 inline edit updates visible task text', (
     tester,
   ) async {
