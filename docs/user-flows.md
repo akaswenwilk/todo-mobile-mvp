@@ -32,10 +32,10 @@
 
 ## Flow D — Complete Task (Not Delete)
 1. Tap completion control
-2. Task moves to completed visual state
-3. Task remains available unless explicitly deleted
+2. Task is marked complete
+3. Task disappears from the active list
 
-**Rule:** completion must always be reversible.
+**Rule:** completion remains distinct from deletion, but reversing completion is out of scope for MVP.
 
 ---
 

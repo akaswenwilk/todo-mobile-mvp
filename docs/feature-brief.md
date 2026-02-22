@@ -26,7 +26,7 @@ Users actively use the app daily for at least 7 consecutive days (D1–D7).
 - Read task list
 - Update task text
 - Delete task
-- Mark complete / uncomplete
+- Mark complete (one-way in MVP)
 - Reorder tasks via drag-and-drop
 - Persist data locally on device
 
