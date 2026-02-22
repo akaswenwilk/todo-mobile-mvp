@@ -10,6 +10,7 @@ Design documentation for a minimalist, dark-first Todo app focused on busy entre
 - Local-only data
 
 ## Docs
+- `AGENTS.md` (assistant operating guide + architecture plan)
 - `docs/feature-brief.md`
 - `docs/user-flows.md`
 - `docs/screen-list.md`
