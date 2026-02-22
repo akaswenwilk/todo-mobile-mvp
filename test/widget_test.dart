@@ -52,6 +52,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(TaskListScreen.addTaskInputKey), findsOneWidget);
+    expect(
+      tester
+          .widget<EditableText>(find.byType(EditableText).first)
+          .focusNode
+          .hasFocus,
+      isTrue,
+    );
 
     await tester.enterText(
       find.byKey(TaskListScreen.addTaskInputKey),
@@ -102,6 +109,42 @@ void main() {
     expect(find.text('Original task'), findsNothing);
   });
 
+  testWidgets('add + edit support multiline task text', (tester) async {
+    await pumpApp(tester);
+
+    const multiline = 'Line 1\nLine 2';
+    await addTask(tester, multiline);
+
+    expect(find.text(multiline), findsOneWidget);
+
+    await tester.tap(find.text(multiline));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(TaskListScreen.editTaskInputKey),
+      'Updated line 1\nUpdated line 2',
+    );
+    await tester.tap(find.byKey(TaskListScreen.editTaskSaveKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Updated line 1\nUpdated line 2'), findsOneWidget);
+  });
+
+  testWidgets('edit rejects whitespace-only update', (tester) async {
+    await pumpApp(tester);
+    await addTask(tester, 'Keep me');
+
+    await tester.tap(find.text('Keep me'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(TaskListScreen.editTaskInputKey), '   ');
+    await tester.tap(find.byKey(TaskListScreen.editTaskSaveKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please enter a valid task title.'), findsOneWidget);
+    expect(find.byKey(TaskListScreen.editTaskInputKey), findsOneWidget);
+  });
+
   testWidgets('M14 complete action removes task from active list', (
     tester,
   ) async {
@@ -113,5 +156,19 @@ void main() {
 
     expect(find.text('Task to complete'), findsNothing);
     expect(find.byKey(TaskListScreen.emptyStateKey), findsOneWidget);
+  });
+
+  testWidgets('complete one task keeps remaining tasks visible', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await addTask(tester, 'A');
+    await addTask(tester, 'B');
+
+    await tester.tap(find.byKey(TaskListScreen.completeTaskButtonKey).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('A'), findsNothing);
+    expect(find.text('B'), findsOneWidget);
   });
 }
