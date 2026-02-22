@@ -251,11 +251,20 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       setState(() {
         _errorText = e.message;
       });
-    } catch (_) {
+    } catch (e) {
       setState(() {
-        _errorText = 'Could not save task. Please try again.';
+        _errorText = 'Could not save task: ${_friendlyError(e)}';
       });
     }
+  }
+
+  String _friendlyError(Object error) {
+    final message = error.toString().trim();
+    if (message.isEmpty) {
+      return 'unknown error';
+    }
+
+    return message;
   }
 
   @override
