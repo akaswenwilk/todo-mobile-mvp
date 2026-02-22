@@ -1,3 +1,4 @@
+import '../errors/task_validation_exception.dart';
 import '../repositories/task_repository.dart';
 
 class CompleteTask {
@@ -5,5 +6,11 @@ class CompleteTask {
 
   final TaskRepository _repository;
 
-  Future<void> call(String taskId) => _repository.completeTask(taskId);
+  Future<void> call(String taskId) {
+    if (taskId.trim().isEmpty) {
+      throw TaskValidationException('Task id cannot be empty.');
+    }
+
+    return _repository.completeTask(taskId);
+  }
 }
