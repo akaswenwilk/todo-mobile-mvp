@@ -1,6 +1,6 @@
 # Todo Mobile MVP (iOS + Android)
 
-Design documentation for a minimalist, dark-first Todo app focused on busy entrepreneurs.
+Cross-platform Flutter implementation for a minimalist, dark-first Todo app focused on busy entrepreneurs.
 
 ## Scope (MVP)
 - Task CRUD
@@ -25,3 +25,11 @@ Design documentation for a minimalist, dark-first Todo app focused on busy entre
 - `assets/screens/04-swipe-delete-ios.png`
 - `assets/screens/05-complete-task-ios.png`
 - `assets/screens/06-reorder-task-ios.png`
+
+## Flutter Commands
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```
