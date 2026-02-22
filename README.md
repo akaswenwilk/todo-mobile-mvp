@@ -14,6 +14,7 @@ Design documentation for a minimalist, dark-first Todo app focused on busy entre
 - `docs/user-flows.md`
 - `docs/screen-list.md`
 - `docs/mvp-clarifications-2026-02-22.md`
+- `docs/mvp-test-plan.md`
 
 ## Exported Screens (PNG)
 - `assets/screens/01-main-list-ios.png`
