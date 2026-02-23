@@ -156,6 +156,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                       children: [
                         IconButton(
                           key: TaskListScreen.completeTaskButtonKey,
+                          tooltip: 'Complete task',
                           onPressed: () => _onComplete(task),
                           icon: const Icon(Icons.radio_button_unchecked),
                         ),
@@ -166,6 +167,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                   controller: _editingController,
                                   maxLines: null,
                                   autofocus: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Edit task title',
+                                  ),
                                 )
                               : GestureDetector(
                                   behavior: HitTestBehavior.opaque,
@@ -181,6 +185,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                         if (isEditing)
                           IconButton(
                             key: TaskListScreen.editTaskSaveKey,
+                            tooltip: 'Save task edits',
                             onPressed: () => _saveEdit(task),
                             icon: const Icon(Icons.check),
                           )
@@ -197,6 +202,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         key: TaskListScreen.fabKey,
+        tooltip: 'Add task',
         onPressed: _openAddSheet,
         child: const Icon(Icons.add),
       ),
@@ -287,6 +293,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
+              labelText: 'Task title',
               hintText: 'What needs to get done?',
               errorText: _errorText,
             ),

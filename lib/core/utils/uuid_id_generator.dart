@@ -7,10 +7,15 @@ class UuidIdGenerator implements IdGenerator {
 
   final Random _random;
 
+  static const _maxRandomValue = 4294967296; // 2^32
+
   @override
   String next() {
     final ts = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    final rand = _random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
+    final rand = _random
+        .nextInt(_maxRandomValue)
+        .toRadixString(16)
+        .padLeft(8, '0');
     return 'task-$ts-$rand';
   }
 }
