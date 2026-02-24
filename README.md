@@ -33,3 +33,14 @@ flutter analyze
 flutter test
 flutter run
 ```
+
+## Playwright E2E (Flutter Web)
+```bash
+npm install
+npm run test:e2e
+```
+
+Notes:
+- Tests live in `e2e/task-list.spec.ts`.
+- Playwright uses local Chromium (`/usr/bin/chromium`) and serves the Flutter web build on `http://127.0.0.1:8080`.
+- If a server is already running on port 8080, Playwright reuses it locally.
