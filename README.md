@@ -17,6 +17,7 @@ Cross-platform Flutter implementation for a minimalist, dark-first Todo app focu
 - `docs/mvp-clarifications-2026-02-22.md`
 - `docs/mvp-test-plan.md`
 - `docs/implementation-plan.md`
+- `docs/qa-checklist-pr05.md`
 
 ## Exported Screens (PNG)
 - `assets/screens/01-main-list-ios.png`
