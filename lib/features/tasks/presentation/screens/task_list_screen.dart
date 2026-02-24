@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:todo_mobile_mvp/features/tasks/data/datasources/in_memory_task_store.dart';
 import 'package:todo_mobile_mvp/features/tasks/data/repositories/task_repository_local.dart';
@@ -6,6 +8,8 @@ import 'package:todo_mobile_mvp/features/tasks/domain/errors/task_validation_exc
 import 'package:todo_mobile_mvp/features/tasks/domain/repositories/task_repository.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/usecases/complete_task.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/usecases/create_task.dart';
+import 'package:todo_mobile_mvp/features/tasks/domain/usecases/delete_task.dart';
+import 'package:todo_mobile_mvp/features/tasks/domain/usecases/reorder_tasks.dart';
 import 'package:todo_mobile_mvp/features/tasks/domain/usecases/update_task.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -21,6 +25,7 @@ class TaskListScreen extends StatefulWidget {
   static const editTaskInputKey = Key('edit_task_input');
   static const editTaskSaveKey = Key('edit_task_save');
   static const completeTaskButtonKey = Key('complete_task_button');
+  static const deleteTaskButtonKey = Key('delete_task_button');
 
   @override
   State<TaskListScreen> createState() => _TaskListScreenState();
@@ -31,11 +36,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
   late final CreateTask _createTask;
   late final UpdateTask _updateTask;
   late final CompleteTask _completeTask;
+  late final DeleteTask _deleteTask;
+  late final ReorderTasks _reorderTasks;
 
   List<Task> _tasks = const [];
   bool _isLoading = true;
   String? _editingTaskId;
   TextEditingController? _editingController;
+  FocusNode? _editingFocusNode;
 
   @override
   void initState() {
@@ -44,12 +52,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
     _createTask = CreateTask(_repository);
     _updateTask = UpdateTask(_repository);
     _completeTask = CompleteTask(_repository);
+    _deleteTask = DeleteTask(_repository);
+    _reorderTasks = ReorderTasks(_repository);
     _loadTasks();
   }
 
   @override
   void dispose() {
     _editingController?.dispose();
+    _editingFocusNode?.dispose();
     super.dispose();
   }
 
@@ -70,9 +81,18 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   void _startEditing(Task task) {
     _editingController?.dispose();
+    _editingFocusNode?.dispose();
+
     _editingController = TextEditingController(text: task.title);
+    _editingFocusNode = FocusNode();
+
     setState(() {
       _editingTaskId = task.id;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _editingFocusNode?.requestFocus();
     });
   }
 
@@ -84,6 +104,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
       );
       _editingController?.dispose();
       _editingController = null;
+      _editingFocusNode?.dispose();
+      _editingFocusNode = null;
       if (!mounted) return;
 
       setState(() {
@@ -102,6 +124,118 @@ class _TaskListScreenState extends State<TaskListScreen> {
   Future<void> _onComplete(Task task) async {
     await _completeTask(task.id);
     await _loadTasks();
+  }
+
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    final reordered = List<Task>.from(_tasks);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    if (_editingTaskId == moved.id) {
+      _editingController?.dispose();
+      _editingFocusNode?.dispose();
+      _editingController = null;
+      _editingFocusNode = null;
+      _editingTaskId = null;
+    }
+
+    setState(() {
+      _tasks = reordered;
+    });
+
+    try {
+      await _reorderTasks(reordered.map((task) => task.id).toList());
+      await _loadTasks();
+    } catch (_) {
+      await _loadTasks();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not reorder tasks. Try again.')),
+      );
+    }
+  }
+
+  Future<void> _onDeleteRequested(Task task) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Delete task?'),
+              content: const Text('You can undo this right after deleting.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    final previousIndex = _tasks.indexWhere((t) => t.id == task.id);
+    if (previousIndex == -1) return;
+
+    if (_editingTaskId == task.id) {
+      _editingController?.dispose();
+      _editingFocusNode?.dispose();
+      _editingController = null;
+      _editingFocusNode = null;
+      _editingTaskId = null;
+    }
+
+    setState(() {
+      _tasks = _tasks.where((t) => t.id != task.id).toList(growable: false);
+    });
+
+    var undone = false;
+    final messenger = ScaffoldMessenger.of(context);
+    final snackController = messenger.showSnackBar(
+      SnackBar(
+        content: Text('Deleted "${task.title}"'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            undone = true;
+            if (!mounted) return;
+
+            setState(() {
+              final restored = List<Task>.from(_tasks);
+              final insertAt = math.min(previousIndex, restored.length);
+              restored.insert(insertAt, task);
+              _tasks = restored;
+            });
+          },
+        ),
+      ),
+    );
+
+    final reason = await snackController.closed;
+    if (undone || reason == SnackBarClosedReason.action) {
+      return;
+    }
+
+    try {
+      await _deleteTask(task.id);
+      await _loadTasks();
+    } catch (_) {
+      await _loadTasks();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not delete task. Try again.')),
+      );
+    }
   }
 
   Future<void> _openAddSheet() async {
@@ -138,15 +272,18 @@ class _TaskListScreenState extends State<TaskListScreen> {
                   textAlign: TextAlign.center,
                 ),
               )
-            : ListView.separated(
+            : ReorderableListView.builder(
                 padding: const EdgeInsets.all(16),
+                buildDefaultDragHandles: false,
                 itemCount: _tasks.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                onReorder: _onReorder,
                 itemBuilder: (context, index) {
                   final task = _tasks[index];
                   final isEditing = _editingTaskId == task.id;
 
                   return Container(
+                    key: ValueKey('task-row-${task.id}'),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -165,6 +302,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                               ? TextField(
                                   key: TaskListScreen.editTaskInputKey,
                                   controller: _editingController,
+                                  focusNode: _editingFocusNode,
                                   maxLines: null,
                                   autofocus: true,
                                   decoration: const InputDecoration(
@@ -190,9 +328,23 @@ class _TaskListScreenState extends State<TaskListScreen> {
                             icon: const Icon(Icons.check),
                           )
                         else
-                          const Padding(
-                            padding: EdgeInsets.only(right: 8),
-                            child: Icon(Icons.drag_indicator),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                key: TaskListScreen.deleteTaskButtonKey,
+                                tooltip: 'Delete task',
+                                onPressed: () => _onDeleteRequested(task),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: const Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: Icon(Icons.drag_indicator),
+                                ),
+                              ),
+                            ],
                           ),
                       ],
                     ),
